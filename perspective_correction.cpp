@@ -5,7 +5,7 @@
 
 int main()
 {
-	cv::Mat src = cv::imread("maze2.jpg");
+	cv::Mat src = cv::imread("mazes/maze1.jpg");
 
     if (src.empty())
     {
