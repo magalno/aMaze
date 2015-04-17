@@ -11,6 +11,10 @@ public:
 
     bool process();
     cv::Mat getResult();
-}
+
+private:
+    cv::Mat src;
+    cv::Mat result;
+};
 
 #endif
