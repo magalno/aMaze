@@ -164,25 +164,3 @@ cv::Mat PerspectiveCorrection::getResult()
 {
 	return result;
 }
-
-
-int main()
-{
-	cv::Mat src = cv::imread("mazes/maze3.jpg");
-
-    if (src.empty())
-    {
-        return 1;
-    }
-
-	PerspectiveCorrection pc(src);
-	if(!pc.process())
-	{
-		std::cout << "Could not perform perspective correction" << std::endl;
-		return 2;
-	}
-
-
-	cv::waitKey();
-	return 0;
-}
