@@ -3,8 +3,12 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+#include <iomanip>
+#include <algorithm>
 
 #define DEBUG
+
+//#define USE_OPENCV
 
 PerspectiveCorrection::PerspectiveCorrection(cv::Mat &_src)
 	: src(_src), result(400, 400, CV_8UC1)
@@ -21,6 +25,7 @@ bool PerspectiveCorrection::process()
 {
 	cv::Mat annotated = src.clone();
 
+#ifdef DEBUG
 	cv::namedWindow("Original", cv::WINDOW_NORMAL);
 	cv::namedWindow("blackwhite", cv::WINDOW_NORMAL);
 	cv::namedWindow("annotated", cv::WINDOW_NORMAL);
@@ -31,7 +36,7 @@ bool PerspectiveCorrection::process()
 	cv::resizeWindow("annotated", 400, 400);
 	cv::resizeWindow("transformed", 400, 400);
 
-#ifdef DEBUG
+
 	cv::imshow("Original", src);
 #endif
 
@@ -122,10 +127,10 @@ bool PerspectiveCorrection::process()
 		}
 	}
 
-	cv::circle(annotated, topLeft, 3, CV_RGB(0,0,255), 2);
-	cv::circle(annotated, topRight, 3, CV_RGB(0,0,255), 2);
-	cv::circle(annotated, bottomLeft, 3, CV_RGB(0,0,255), 2);
-	cv::circle(annotated, bottomRight, 3, CV_RGB(0,0,255), 2);
+	cv::circle(annotated, topLeft, 20, CV_RGB(0,0,255), 2);
+	cv::circle(annotated, topRight, 20, CV_RGB(0,0,255), 2);
+	cv::circle(annotated, bottomLeft, 20, CV_RGB(0,0,255), 2);
+	cv::circle(annotated, bottomRight, 20, CV_RGB(0,0,255), 2);
 
 #ifdef DEBUG
 	cv::imshow("annotated", annotated);
@@ -145,9 +150,20 @@ bool PerspectiveCorrection::process()
 	corners.push_back(bottomRight);
 	corners.push_back(bottomLeft);
 
+#ifdef DEBUG
+		std::cout << "Top left: " << topLeft << std::endl;
+		std::cout << "Top right: " << topRight << std::endl;
+		std::cout << "Bottom left: " << topLeft << std::endl;
+		std::cout << "Bottom right: " << bottomRight << std::endl;
+#endif
 
 	cv::Mat transmtx = cv::getPerspectiveTransform(corners, quad_pts);
+
+#ifdef USE_OPENCV
 	cv::warpPerspective(bw, quad, transmtx, quad.size(), cv::INTER_NEAREST);
+#else
+	doTransform(transmtx, bw, quad);
+#endif
 
 	bitwise_not ( quad, quad );
 
@@ -158,6 +174,80 @@ bool PerspectiveCorrection::process()
 	result = quad;
 
 	return true;
+}
+
+bool PerspectiveCorrection::doTransform(cv::Mat &transmtx,cv::Mat &src, cv::Mat &dst)
+{
+#ifdef DEBUG
+	std::cout << "Src: rows:" << src.rows << ", cols:" << src.cols << std::endl;
+	std::cout << "Transformation matrix:" << std::endl << transmtx << std::endl;
+#endif
+
+	cv::Mat transmtx_inv = transmtx.inv();
+
+#ifdef DEBUG
+	std::cout << "Inverse transformation matrix:" << std::endl  << transmtx_inv << std::endl;
+#endif
+
+	cv::Point3d dstPoint;
+	dstPoint.z = 1.0f;
+	cv::Point3d srcPoint;
+
+
+	// For every point in the destination image
+	// Calculate the respective point in the source image in the top left corner of the pixel,
+	// and the bottom right corner (could be a rather large area if source image is bigger than the destination image)
+	// Search this area if any pixel is white, and if so set the pixel in the destination image to white
+	for(int y = 0; y < dst.rows; y++)
+	{
+		for(int x = 0; x < dst.cols; x++)
+		{
+			// Do the math operation srcPoint = transmtx_inv * dstPoint;
+			// Create the homeneous cordinate for the destination point
+			dstPoint.x = x-0.9;
+			dstPoint.y = y-0.9;
+			cv::Mat V = transmtx_inv * cv::Mat(dstPoint, false);
+			V.copyTo( cv::Mat(srcPoint, false) );
+
+			// Convert the homegenous coordinate for source back to cartesian form
+			srcPoint.x /= srcPoint.z;
+			srcPoint.y /= srcPoint.z;
+
+			int topLeftX = (int)srcPoint.x;
+			int topLeftY = (int)srcPoint.y;
+
+			// Do the same for the bottom right corner
+			dstPoint.x = x+0.9;
+			dstPoint.y = y+0.9;
+			V = transmtx_inv * cv::Mat(dstPoint, false);
+			V.copyTo( cv::Mat(srcPoint, false) );
+
+			// Convert the homegenous coordinate for source back to cartesian form
+			srcPoint.x /= srcPoint.z;
+			srcPoint.y /= srcPoint.z;
+
+			int bottomRightX = (int)srcPoint.x;
+			int bottomRightY = (int)srcPoint.y;
+
+			// Search for white pixels in this area
+			// We probably don't have to search the whole area
+			// So to speed it up, search along a line from the topLeft to the bottomRight
+			// We simplify this even more by find the minimum bouding square and search along that diagonal
+			// Calculate the length of that diagonal
+			int diagLength = std::max(std::min(std::abs(bottomRightX - topLeftX), std::abs(bottomRightY - topLeftY)), 1);
+			for(int delta = 0; delta < diagLength; delta++)
+			{
+				uint8_t data = src.at<uint8_t>(topLeftY+delta, topLeftX+delta); // Yes, its rows first.. This took me forever to figure out....
+				if(data == 255)
+				{
+					dst.at<uint8_t>(y, x) = 255;
+					break; // No need to search more when the result wont change
+				}
+			}
+
+			//dst.at<uint8_t>(x, y) = 0;
+		}
+	}
 }
 
 cv::Mat PerspectiveCorrection::getResult()

@@ -13,6 +13,8 @@ public:
     cv::Mat getResult();
 
 private:
+    bool doTransform(cv::Mat &transmtx,cv::Mat &src, cv::Mat &dst);
+
     cv::Mat src;
     cv::Mat result;
 };
