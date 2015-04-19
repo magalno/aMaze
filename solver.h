@@ -1,5 +1,5 @@
-#ifndef PERSPECTIVE_CORRECTION_H
-#define PERSPECTIVE_CORRECTION_H
+#ifndef SOLVER_H
+#define SOLVER_H
 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>

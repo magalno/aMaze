@@ -131,9 +131,9 @@ void Solver::find_maze_arrays(){
 	this->maze_size_x = (this->image.rows/this->grid_size_x)*2+1;
 	this->maze_size_y = (this->image.cols/this->grid_size_y)*2+1;
 	
-	this->maze_array = new int * [this->maze_size_y];
-	for(int i = 0; i < this->maze_size_y; ++i) {
-    	this->maze_array[i] = new int[this->maze_size_x];
+	this->maze_array = new int * [this->maze_size_x];
+	for(int i = 0; i < this->maze_size_x; ++i) {
+    	this->maze_array[i] = new int[this->maze_size_y];
 	}
 	for (int x =0;x<this->maze_size_x;x++){
 		for(int y = 0;y<this->maze_size_y+1;y++){
@@ -165,19 +165,18 @@ bool Solver::check_area(int pos_x,int pos_y,int size_x,int size_y){
 }
 void Solver::solv_maze(){
 	
-	/*
-	this->maze_solution_array = new int * [this->maze_size_y];
-	for(int i = 0; i < this->maze_size_y;i ++) {
-    	this->maze_array[i] = new int[this->maze_size_x];
+	
+	cout <<this->maze_size_x<<" " << this->maze_size_x<<endl;
+	this->maze_solution_array = new int * [this->maze_size_x+1];
+	for(int i = 0; i < this->maze_size_x+1;i ++) {
+    	this->maze_solution_array[i] = new int[this->maze_size_y];
 	}
 	
-	for (int x =0; x<this->maze_size_x-1;x++){
-		for (int y = 0;y<this->maze_size_y-1;y++){
-			cout <<x<<" "<<y<<endl;
-			this->maze_solution_array[x][y] = 0;//this->maze_array[x][y];
+	for (int x =0; x<this->maze_size_x;x++){
+		for (int y = 0;y<this->maze_size_y;y++){
+			this->maze_solution_array[x][y] = this->maze_array[x][y];
 		}
 	}
-	
 	//finding start and goal positions
 	for (int x = 0; x<this->maze_size_x;x++){
 		if (this->maze_solution_array[x][0] == 1){
@@ -192,25 +191,73 @@ void Solver::solv_maze(){
 		}
 	}
 	for (int x = 0; x<this->maze_size_x;x++){
-		if (this->maze_solution_array[x][this->maze_size_x] == 1){
+		if (this->maze_solution_array[x][this->maze_size_y-1] == 1){
 			this->maze_goal_x = x;
-			this->maze_goal_y = 0;
+			this->maze_goal_y = this->maze_size_y-1;
 		}
 	}
 	for (int y = 0; y<this->maze_size_y;y++){
-		if (this->maze_solution_array[this->maze_size_y][y] == 1){
-			this->maze_goal_x = 0;
+		if (this->maze_solution_array[this->maze_size_x-1][y] == 1){
+			this->maze_goal_x = this->maze_size_x-1;
 			this->maze_goal_y = y;
 		}
 	}
-	cout<<this->maze_goal_x<<" "<<this->maze_goal_y<<" "<<this->maze_start_x<<" "<<this->maze_start_y;
-	*/
+	this->maze_solution_array[this->maze_start_x][this->maze_start_y] =2;
+	this->recursive_solve(this->maze_start_x,this->maze_start_y);
+
 }
-bool Solver::recursive_solve(int x,int y){
+bool Solver::recursive_solve(int x,int y){	
+	if (x>38)
+		cout<<x<<" "<<y<<" "<<this->maze_goal_x<<" "<<this->maze_goal_y<<endl;
 
+	if (this->maze_goal_x == x && this->maze_goal_y == y){
+		cout <<"goal!!"<<endl;
+		return true;
+	}
 
+	if (this->maze_solution_array[x+1][y] == 1 ){
+		this->maze_solution_array[x+1][y] = 2;
+		if (this->recursive_solve(x+1,y)){
+			return true;
+		}
+		this->maze_solution_array[x+1][y] =3;
+	}
+	if ( x>0 && this->maze_solution_array[x-1][y] == 1 ){
+		this->maze_solution_array[x-1][y] = 2;
+		if (this->recursive_solve(x-1,y)){
+			return true;
+		}
+		this->maze_solution_array[x-1][y] =3;
+	}
+
+	if (this->maze_solution_array[x][y+1] == 1 ){
+		this->maze_solution_array[x][y+1] = 2;
+		if (this->recursive_solve(x,y+1)){
+			return true;
+		}
+		this->maze_solution_array[x][y+1] =3;
+	}
+
+	if (y>0&&this->maze_solution_array[x][y-1] == 1){
+		this->maze_solution_array[x][y-1] = 2;
+		if (this->recursive_solve(x,y-1)){
+			return true;
+		}
+		this->maze_solution_array[x][y-1] =3;
+	}
+	return false;
 }
 void Solver::create_maze_solution_image(){
+	this->image = this->orginal_image;
+	cvtColor(this->image, this->image, CV_GRAY2RGB);
+	for (int x=0; x<this->maze_size_x; x++){
+	    for(int y=0; y<this->maze_size_y; y++){
+			if (this->maze_solution_array[x][y] == 2){
+			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
+				rectangle( this->image,Point( y*this->grid_size_y/2-this->grid_size_y/4, x*this->grid_size_x/2-this->grid_size_x/4 ),Point( y*this->grid_size_y/2+this->grid_size_y/4, x*this->grid_size_x/2+this->grid_size_x/4),Scalar( 255, 0, 0 ),-1,8 );
+			}
+		 }
+	}
 
 }
 void Solver::print_maze(){
@@ -223,12 +270,31 @@ void Solver::print_maze(){
 			else if (this->maze_array[x][y] ==1){
 				cout<<"o";
 			}
+			
 		}
 		cout<<endl;
 	}
 }
 void Solver::print_maze_solution(){
-
+	
+	cout<<endl<<endl;
+	for (int x =0; x<this->maze_size_x;x++){
+		for (int y=0; y< this->maze_size_y;y++){
+			if (this->maze_solution_array[x][y] == 0){
+				cout<<"x";
+			}
+			else if (this->maze_solution_array[x][y] ==1){
+				cout<<"o";
+			}
+			else if (this->maze_solution_array[x][y] ==2){
+				cout<<"s";
+			}
+			else{
+				cout<<"b";
+			}
+		}
+		cout<<endl;
+	}
 }
 cv::Mat Solver::getSolution(){
 	cout <<"retriving result"<<endl;
