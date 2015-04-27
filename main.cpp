@@ -10,7 +10,7 @@
 //using namespace cv;
 
 int main(){
-	cv::Mat src = cv::imread("mazes/maze3.jpg");
+	cv::Mat src = cv::imread("mazes/maze1.jpg");
 
     if (src.empty())
     {

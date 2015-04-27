@@ -48,6 +48,7 @@ bool PerspectiveCorrection::process()
 	cv::imshow("blackwhite", bw);
 #endif
 
+#ifdef USE_OPENCV
 	std::vector<cv::Vec4i> lines;
 	cv::HoughLinesP(bw, lines, 1, CV_PI/180, 70, 30, 10);
 
@@ -57,6 +58,8 @@ bool PerspectiveCorrection::process()
 		cv::Vec4i v = lines[i];
 		cv::line(annotated, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(255,0,0), 4);
 	}
+
+
 
 #ifdef DEBUG
 	cv::imshow("annotated", annotated);
@@ -127,12 +130,36 @@ bool PerspectiveCorrection::process()
 		}
 	}
 
-	cv::circle(annotated, topLeft, 20, CV_RGB(0,0,255), 2);
-	cv::circle(annotated, topRight, 20, CV_RGB(0,0,255), 2);
-	cv::circle(annotated, bottomLeft, 20, CV_RGB(0,0,255), 2);
-	cv::circle(annotated, bottomRight, 20, CV_RGB(0,0,255), 2);
+	std::vector<cv::Point2f> corners;
+	corners.push_back(topLeft);
+	corners.push_back(topRight);
+	corners.push_back(bottomRight);
+	corners.push_back(bottomLeft);
+
+
+#else
+	cv::Point2f center = findCenter(bw);
+	cv::circle(annotated, center, 40, CV_RGB(0,255,255), 5);
+
+	std::vector<cv::Point2f> corners;
+	if(!findCornes(bw, center, corners)) {
+		// Could not find corners
+		return false;
+	}
+
+#endif
+
+cv::circle(annotated, corners[0], 20, CV_RGB(0,0,255), 5);
+cv::circle(annotated, corners[1], 20, CV_RGB(0,0,255), 5);
+cv::circle(annotated, corners[2], 20, CV_RGB(0,0,255), 5);
+cv::circle(annotated, corners[3], 20, CV_RGB(0,0,255), 5);
 
 #ifdef DEBUG
+	std::cout << "Top left: " << corners[0] << std::endl;
+	std::cout << "Top right: " <<  corners[1] << std::endl;
+	std::cout << "Bottom right: " <<  corners[2] << std::endl;
+	std::cout << "Bottom left: " <<  corners[3] << std::endl;
+
 	cv::imshow("annotated", annotated);
 #endif
 
@@ -144,18 +171,8 @@ bool PerspectiveCorrection::process()
 	quad_pts.push_back(cv::Point2f(quad.cols, quad.rows));
 	quad_pts.push_back(cv::Point2f(0, quad.rows));
 
-	std::vector<cv::Point2f> corners;
-	corners.push_back(topLeft);
-	corners.push_back(topRight);
-	corners.push_back(bottomRight);
-	corners.push_back(bottomLeft);
 
-#ifdef DEBUG
-		std::cout << "Top left: " << topLeft << std::endl;
-		std::cout << "Top right: " << topRight << std::endl;
-		std::cout << "Bottom left: " << topLeft << std::endl;
-		std::cout << "Bottom right: " << bottomRight << std::endl;
-#endif
+
 
 	cv::Mat transmtx = cv::getPerspectiveTransform(corners, quad_pts);
 
@@ -173,6 +190,111 @@ bool PerspectiveCorrection::process()
 
 	result = quad;
 
+	return true;
+}
+
+cv::Point2f PerspectiveCorrection::findCenter(cv::Mat &bw)
+{
+	cv::Point2f center;
+	center.x = 0.0f;
+	center.y = 0.0f;
+
+	int count = 0;
+	for(int row = 0; row < bw.rows; row++)
+	{
+		for(int col = 0; col < bw.cols; col++)
+		{
+			uint8_t val = bw.at<uint8_t>(row, col);
+			if(val == 255)
+			{
+				center.x += col;
+				center.y += row;
+				count++;
+			}
+		}
+	}
+
+	center.x /= (float)count;
+	center.y /= (float)count;
+
+	return center;
+}
+
+bool PerspectiveCorrection::findCornes(cv::Mat &bw, cv::Point2f &centerPoint, std::vector<cv::Point2f> &corners)
+{
+	cv::Point2f topLeft(0.0f,0.0f);
+	float topLeftMax = 0.0f;
+	cv::Point2f topRight(0.0f,0.0f);
+	float topRightMax = 0.0f;
+	cv::Point2f bottomLeft(0.0f,0.0f);
+	float bottomLeftMax = 0.0f;
+	cv::Point2f bottomRight(0.0f,0.0f);
+	float bottomRightMax = 0.0f;
+
+	// We search all pixels
+	for(int row = 0; row < bw.rows; row++)
+	{
+		for(int col = 0; col < bw.cols; col++)
+		{
+			uint8_t val = bw.at<uint8_t>(row, col);
+			// Skip all white pixels
+			if(val == 0)
+			{
+				continue;
+			}
+
+			cv::Point2f p((float)col, (float)row);
+			cv::Point2f diff;
+
+			diff.x = p.x - centerPoint.x;
+			diff.y = p.y - centerPoint.y;
+			float length = diff.x*diff.x + diff.y*diff.y;
+
+			// Check if this is a new corner
+			if(p.x < centerPoint.x
+				&& p.y < centerPoint.y
+				&& length > topLeftMax)
+			{
+				topLeftMax = length;
+				topLeft.x = p.x;
+				topLeft.y = p.y;
+			}
+			else if(p.x < centerPoint.x
+				&& p.y >= centerPoint.y
+				&& length > bottomLeftMax)
+			{
+				//  This is the new bottom left corner
+				bottomLeftMax = length;
+				bottomLeft.x = p.x;
+				bottomLeft.y = p.y;
+			}
+			else if(p.x >= centerPoint.x
+				&& p.y < centerPoint.y
+				&& length > topRightMax)
+			{
+				//  This is the new bottom left corner
+				topRightMax = length;
+				topRight.x = p.x;
+				topRight.y = p.y;
+			}
+			else if(p.x >= centerPoint.x
+				&& p.y >= centerPoint.y
+				&& length > bottomRightMax)
+			{
+				//  This is the new bottom left corner
+				bottomRightMax = length;
+				bottomRight.x = p.x;
+				bottomRight.y = p.y;
+			}
+		}
+	}
+
+	// Add the corners to the list
+	corners.clear();
+	corners.push_back(topLeft);
+	corners.push_back(topRight);
+	corners.push_back(bottomRight);
+	corners.push_back(bottomLeft);
 	return true;
 }
 
