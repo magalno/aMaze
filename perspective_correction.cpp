@@ -56,7 +56,11 @@ bool PerspectiveCorrection::process()
 	std::vector<cv::Point2f> corners;
 
 #ifdef USE_OPENCV
-	findCornersHoughLines(src, corners, annotated);
+	if(!findCornersHoughLines(src, corners, annotated))
+	{
+		std::cerr << LOG "Could not find corners." << std::endl;
+		return false;
+	}
 #else
 	// Find the center point of all white pixels
 	cv::Point2f center = findCenter(src);
@@ -69,6 +73,7 @@ bool PerspectiveCorrection::process()
 	// Find the corners and place them in a list orderer topLeft, topRight, bottomRight, bottomLeft
 	if(!findCornes(src, center, corners)) {
 		// Could not find corners
+		std::cerr << LOG "Could not find corners." << std::endl;
 		return false;
 	}
 
@@ -128,7 +133,11 @@ bool PerspectiveCorrection::process()
 #ifdef USE_OPENCV
 	cv::warpPerspective(src, quad, transmtx, quad.size(), cv::INTER_NEAREST);
 #else
-	doTransform(transmtx, src, quad);
+	if(!doTransform(transmtx, src, quad))
+	{
+		std::cerr << LOG "Could not transform image.." << std::endl;
+		return false;
+	}
 #endif
 
 	// Invert the image such that the result is white with black lines on it.
@@ -170,6 +179,34 @@ cv::Point2f PerspectiveCorrection::findCenter(cv::Mat &bw)
 	return center;
 }
 
+int PerspectiveCorrection::countSpiralOut(int centerX, int centerY, int delta, std::function<bool (const int x, const int y)> func)
+{
+	int x,y,dx,dy;
+    x = y = dx =0;
+    dy = -1;
+    int t = delta;
+    int maxI = t*t;
+
+	int count = 0;
+    for(int i =0; i < maxI; i++){
+        if ((-delta <= x) && (x <= delta) && (-delta <= y) && (y <= delta)){
+    		if(func(centerX+x, centerY+y))
+			{
+				count++;
+			}
+        }
+        if( (x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1-y))){
+            t = dx;
+            dx = -dy;
+            dy = t;
+        }
+        x += dx;
+        y += dy;
+    }
+	return count;
+}
+
+
 bool PerspectiveCorrection::findCornes(cv::Mat &bw, cv::Point2f &centerPoint, std::vector<cv::Point2f> &corners)
 {
 	cv::Point2f topLeft(0.0f,0.0f);
@@ -181,19 +218,33 @@ bool PerspectiveCorrection::findCornes(cv::Mat &bw, cv::Point2f &centerPoint, st
 	cv::Point2f bottomRight(0.0f,0.0f);
 	float bottomRightMax = 0.0f;
 
-	// We search all pixels
-	for(int row = 0; row < bw.rows; row++)
+	for(int y = 0; y < bw.rows; y++)
 	{
-		for(int col = 0; col < bw.cols; col++)
+
+		for(int x = 0; x < bw.cols; x++)
 		{
-			uint8_t val = bw.at<uint8_t>(row, col);
+			uint8_t val = bw.at<uint8_t>(y, x);
 			// Skip all white pixels
 			if(val == 0)
 			{
 				continue;
 			}
+			// We have a white pixel, scan the neighbooring 6x6 area
+			// We search out in a spiral
+			int pixelMatches = countSpiralOut(x, y, 3, [&] (const int pX, const int pY)
+			{
+				if(pX < 0 && pY < 0 && pX >= bw.cols && pY >= bw.rows) {
+					return false;
+				}
+				return bw.at<uint8_t>(pY, pX) == 255;
+			});
 
-			cv::Point2f p((float)col, (float)row);
+			if(pixelMatches < 4)
+			{
+				continue;
+			}
+
+			cv::Point2f p((float)x, (float)y);
 			cv::Point2f diff;
 
 			diff.x = p.x - centerPoint.x;
@@ -417,6 +468,7 @@ bool PerspectiveCorrection::doTransform(cv::Mat &transmtx,cv::Mat &src, cv::Mat 
 			//dst.at<uint8_t>(x, y) = 0;
 		}
 	}
+	return true;
 }
 
 cv::Mat PerspectiveCorrection::getResult()

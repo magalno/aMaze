@@ -1,3 +1,5 @@
+#include "preprocessing.h"
+
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
@@ -6,107 +8,79 @@
 using namespace cv;
 using namespace std;
 
+//#define DEBUG
+
 #define THRESHOLD_VAL	55
 #define WEIGHT_RED      1
 #define WEIGHT_GREEN    1
 #define WEIGHT_BLUE     1
 
+#define KERNEL_SIZE 11
+
 #define COLOR_RES       8
 #define N_COLORS        pow(2, COLOR_RES)
 #define COLOR_MAX_VAL   (N_COLORS - 1)
 
-#define MORPH_KERNEL_SIZE 5 // 11 seems perfect
-
-enum color{
-    RED,
-    GREEN,
-    BLUE
-};
-
-void get_histogram(Mat src, int hist[], int n_colors);
-void print_hist(int hist[], int n_colors);
-int get_otsu_thresh_val(Mat src,int n_colors);
-void threshold_grayscale(Mat img, int threshold, int invert);
-void filter(Mat src, Mat dst, Mat kernel);
-//void filter_sep(Mat src, Mat dst, Mat kernel_x, Mat kernel_y);
-void print_mat(Mat img);
-void convert_to_grayscale(Mat src, Mat dst);
-void threshold_adaptive(Mat src, Mat dst, int tile_size);
-void erode(Mat src, Mat se);
-void dialate(Mat src, Mat se);
-void open(Mat src, Mat se);
-void close(Mat src, Mat se);
-void top_hat(Mat src, Mat se);
-void bottom_hat(Mat src, Mat se);
-void invert(Mat img);
-
-int main( int argc, const char** argv )
+Preprocessing::Preprocessing(cv::Mat &_src)
+	: src(_src)
 {
-    Mat img = imread("mazes/maze3.jpg", CV_LOAD_IMAGE_UNCHANGED);
-    
-    //display original
-    namedWindow("org", WINDOW_NORMAL);
-	resizeWindow("org", 600, 600);
-    imshow("org",img);
-    
-    // Convert to grayscale
-    Mat gray;
-    gray.create(img.rows, img.cols, CV_8U);
-    convert_to_grayscale(img, gray);
-    
-    int thresh = get_otsu_thresh_val(gray,N_COLORS);
-    threshold_grayscale(gray, thresh, 0);
-    
-    //Mat top = gray.clone();
-    //Mat bottom = gray.clone();
-    
-    //test your function
-    /*
-    Mat structuring_element = (Mat_<uchar>(4,4) << 
-    0,1,1,0,
-    1,1,1,1,
-    1,1,1,1,
-    0,1,1,0);*/
-    //Mat structuring_element = Mat::ones(21,21, CV_8U);
-    
-    //Mat structuring_element = getStructuringElement(MORPH_RECT, Size(MORPH_KERNEL_SIZE*2+1, MORPH_KERNEL_SIZE*2+1), Point(MORPH_KERNEL_SIZE, MORPH_KERNEL_SIZE) );
-    
-    /*
-    bottom_hat(bottom, structuring_element);
-    top_hat(top, structuring_element);
-       
-    //display bottom hat
-    namedWindow("bottom", WINDOW_NORMAL);
-	resizeWindow("bottom", 600, 600);
-    imshow("bottom",bottom);
-    
-    //display result 
-    namedWindow("top", WINDOW_NORMAL);
-	resizeWindow("top", 600, 600);
-    imshow("top",top);
-    
-    */
-    
-    //display result 
-    namedWindow("result", WINDOW_NORMAL);
-	resizeWindow("result", 600, 600);
-    imshow("result",gray);
-    
-    //wait for keypress
-    waitKey(0); //wait infinite time for a keypress
-	destroyWindow("result");
+
 }
 
-void get_histogram(Mat src, int hist[], int n_colors){
+Preprocessing::~Preprocessing()
+{
+
+}
+
+bool Preprocessing::process()
+{
+    // Convert to grayscale
+    Mat gray;
+    gray.create(src.rows, src.cols, CV_8U);
+    convert_to_grayscale(src, gray);
+    
+    //OpenCV
+    #define KERNEL_SIZE 11
+    Mat element = getStructuringElement(MORPH_RECT, Size(KERNEL_SIZE*2+1, KERNEL_SIZE*2+1), Point(KERNEL_SIZE,KERNEL_SIZE) );
+
+    //OpenCV
+    morphologyEx(gray, gray, 6, element );
+    
+    //morphed
+    namedWindow("bottomhat", WINDOW_NORMAL);
+	resizeWindow("bottomhat", 600, 600);
+    imshow("bottomhat",gray);
+    
+    //int thresh = get_otsu_thresh_val(gray,N_COLORS);
+    int thresh = 20;
+    threshold_grayscale(gray, thresh, 0);
+    
+    result = gray.clone(); 
+    
+    //display original
+    namedWindow("res", WINDOW_NORMAL);
+	resizeWindow("res", 600, 600);
+    imshow("res",gray);
+    
+    return true;    
+}
+
+Mat Preprocessing::getResult()
+{
+    return result;
+}
+
+void Preprocessing::get_histogram(Mat src, int hist[], int n_colors)
+{
     int index;
-     for(int x = 0; x < src.rows - 0; x++) {
+    for(int x = 0; x < src.rows - 0; x++) {
         for(int y = 0; y < src.cols - 0; y++) {
             hist[src.at<uchar>(x,y)]++;  
         }
      }   
 }
 
-void print_hist(int hist[], int n_colors){
+void Preprocessing::print_hist(int hist[], int n_colors){
     cout << "\nHistogram is:" <<endl;
     for(int i = 0; i < n_colors - 0; i++){
         cout << hist[i] << " ";
@@ -114,7 +88,7 @@ void print_hist(int hist[], int n_colors){
     cout<<endl;
 }
 
-int get_otsu_thresh_val(Mat src, int n_colors){
+int Preprocessing::get_otsu_thresh_val(Mat src, int n_colors){
     //required variables for otsu calculation
     int otsu_thresh_val = 0;
     float cuml_first = 0.0;
@@ -152,7 +126,7 @@ int get_otsu_thresh_val(Mat src, int n_colors){
     return otsu_thresh_val;
 }
 
-void threshold_grayscale(Mat img, int threshold, int invert){
+void Preprocessing::threshold_grayscale(Mat img, int threshold, bool invert){
     for(int j=0;j<img.rows;j++) {
         for(int i=0;i<img.cols;i++){
             if( img.at<uchar>(j,i) >= threshold ){ 
@@ -173,7 +147,7 @@ void threshold_grayscale(Mat img, int threshold, int invert){
 
 }
 
-void filter(Mat src, Mat dst, Mat kernel){
+void Preprocessing::filter(Mat src, Mat dst, Mat kernel){
     cout << "filter" << endl;
     
     // Calculate the sum of the filter
@@ -207,11 +181,11 @@ void filter(Mat src, Mat dst, Mat kernel){
     }
 }
 
-void filter_sep(Mat src, Mat dst, Mat kernel_x, Mat kernel_y){
+void Preprocessing::filter_sep(Mat src, Mat dst, Mat kernel_x, Mat kernel_y){
 
 }
 
-void print_mat(Mat img){
+void Preprocessing::print_mat(Mat img){
 	for(int x=0; x<img.rows - 0; x++) {
         for(int y=0; y<img.cols - 0; y++) {
         	cout << img.at<double>(x,y) << "\t";
@@ -220,7 +194,7 @@ void print_mat(Mat img){
     }
 }
 
-void convert_to_grayscale(Mat src, Mat dst){
+void Preprocessing::convert_to_grayscale(Mat src, Mat dst){
     int gray_val;
     for(int x=0; x<src.rows; x++){
         for(int y=0; y<src.cols; y++){
@@ -238,7 +212,7 @@ void convert_to_grayscale(Mat src, Mat dst){
     }
 }
 
-void threshold_adaptive(Mat src, Mat dst, int tile_size){
+void Preprocessing::threshold_adaptive(Mat src, Mat dst, int tile_size){
     Mat tile;
     Mat tile_copy;
     int threshold;
@@ -253,7 +227,7 @@ void threshold_adaptive(Mat src, Mat dst, int tile_size){
     }
 }
 
-void erode(Mat src, Mat se){
+void Preprocessing::erode(Mat src, Mat se){
     int se_center_r = se.rows/2;
     int se_center_c = se.cols/2;
     int offset_r = 0;
@@ -291,7 +265,7 @@ void erode(Mat src, Mat se){
     imshow("eroded",src);
 }
 
-void dialate(Mat src, Mat se){
+void Preprocessing::dialate(Mat src, Mat se){
     int se_center_r = se.rows/2;
     int se_center_c = se.cols/2;
     int offset_r = 0;
@@ -329,7 +303,7 @@ void dialate(Mat src, Mat se){
     imshow("dialated",src);
 }
 
-void close(Mat img, Mat se){
+void Preprocessing::close(Mat img, Mat se){
     dialate(img, se);
     erode(img, se);
     
@@ -338,7 +312,7 @@ void close(Mat img, Mat se){
     imshow("closed",img);
 }
 
-void open(Mat img, Mat se){
+void Preprocessing::open(Mat img, Mat se){
     erode(img, se);
     dialate(img, se);
     
@@ -347,7 +321,7 @@ void open(Mat img, Mat se){
     imshow("opened",img);
 }
 
-void bottom_hat(Mat img, Mat se){
+void Preprocessing::bottom_hat(Mat img, Mat se){
     Mat clone = img.clone();
     close(img, se);
     
@@ -361,7 +335,7 @@ void bottom_hat(Mat img, Mat se){
     imshow("bottom hat",img);
 }
 
-void top_hat(Mat img, Mat se){
+void Preprocessing::top_hat(Mat img, Mat se){
     Mat clone = img.clone();
     open(img, se);
     
@@ -375,17 +349,11 @@ void top_hat(Mat img, Mat se){
     imshow("top hat",img);
 }
 
-void invert(Mat img){
+void Preprocessing::invert(Mat img){
     for(int row = 0; row < img.rows; row++){
         for(int col = 0; col < img.cols; col++){
             img.at<uchar>(row,col) = COLOR_MAX_VAL - img.at<uchar>(row, col);
         }
     }
 }
-
-
-
-
-
-
 
