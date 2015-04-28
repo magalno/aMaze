@@ -36,12 +36,12 @@ int main(){
 	cv::Mat transformed = pc.getResult();
 	Solver solver(transformed);
 
-	/*
+	
 	if(!solver.process()) {
 
 	}
-	*/
-	cv::Mat solution = solver.getSolution();
+	
+	cv::Mat solution = solver.getResult();
 	cv::imshow("SOLUTION", solution);
 
 

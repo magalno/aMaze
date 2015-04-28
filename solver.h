@@ -35,10 +35,11 @@ private:
 public:
     Solver(cv::Mat &img);
     ~Solver();
-
-    cv::Mat getSolution();
+	
+    cv::Mat getResult();
 	void print_maze();
 	void print_maze_solution();
+	bool process();
 };
 
 #endif

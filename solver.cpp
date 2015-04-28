@@ -8,17 +8,21 @@ using namespace cv;
 
 Solver::Solver(cv::Mat &src){
 	this->image = src.clone();
+	
+	cout <<"solver created"<<endl;
+
+}
+Solver::~Solver(){
+	cout <<"solver destroyd"<<endl;
+}
+
+bool Solver::process(){
 	this->orginal_image = this->image.clone();
 	thin_image();
 	find_gird_sizes();
 	find_maze_arrays();
 	solv_maze();
 	create_maze_solution_image();
-	cout <<"solver created"<<endl;
-
-}
-Solver::~Solver(){
-	cout <<"solver destroyd"<<endl;
 }
 
 
@@ -76,6 +80,7 @@ void Solver::thin_image(){
 	 
 	this->image = Scalar::all(255) - this->image;
 	cv::imshow("thinned image", this->image);
+	imwrite( "thinned_Image.jpg", this->image );
 
 }
 void Solver::find_gird_sizes(){
@@ -139,7 +144,7 @@ void Solver::find_maze_arrays(){
 	}
 	for (int x =0;x<this->maze_size_x;x++){
 		for(int y = 0;y<this->maze_size_y+1;y++){
-			int areasize = 6; //found by trial and error
+			int areasize = 5; //found by trial and error
 			if(this->check_area(x*this->grid_size_x/2-areasize/2,y*this->grid_size_y/2-areasize/2,areasize,areasize)){
 				this->maze_array[x][y] =1;
 			}
@@ -275,6 +280,7 @@ void Solver::create_maze_solution_image(){
 			
 		 }
 	}
+	imwrite( "solved_Image.jpg", this->image );
 
 }
 void Solver::print_maze(){
@@ -313,7 +319,7 @@ void Solver::print_maze_solution(){
 		cout<<endl;
 	}
 }
-cv::Mat Solver::getSolution(){
+cv::Mat Solver::getResult(){
 	cout <<"retriving result"<<endl;
 	return this->image;
 }
