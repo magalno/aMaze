@@ -28,8 +28,8 @@ private:
     void print_mat(cv::Mat img);
     void convert_to_grayscale(cv::Mat src, cv::Mat dst);
     void threshold_adaptive(cv::Mat src, cv::Mat dst, int tile_size);
-    void erode(cv::Mat src, cv::Mat se);
-    void dialate(cv::Mat src, cv::Mat se);
+    void erode_img(cv::Mat src, cv::Mat dst, cv::Mat se);
+    void dilate_img(cv::Mat src, cv::Mat dst, cv::Mat se);
     void open(cv::Mat src, cv::Mat se);
     void close(cv::Mat src, cv::Mat se);
     void top_hat(cv::Mat src, cv::Mat se);

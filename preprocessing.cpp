@@ -15,7 +15,7 @@ using namespace std;
 #define WEIGHT_GREEN    1
 #define WEIGHT_BLUE     1
 
-#define KERNEL_SIZE 11
+#define KERNEL_SIZE 21
 
 #define COLOR_RES       8
 #define N_COLORS        pow(2, COLOR_RES)
@@ -40,11 +40,10 @@ bool Preprocessing::process()
     convert_to_grayscale(src, gray);
 
     //OpenCV
-    #define KERNEL_SIZE 11
-    Mat element = getStructuringElement(MORPH_RECT, Size(KERNEL_SIZE*2+1, KERNEL_SIZE*2+1), Point(KERNEL_SIZE,KERNEL_SIZE) );
+    Mat structuring_element = Mat::ones(KERNEL_SIZE,KERNEL_SIZE, CV_8U);
 
     //OpenCV
-    morphologyEx(gray, gray, 6, element );
+    morphologyEx(gray, gray, 6, structuring_element );
 
     //morphed
     namedWindow("bottomhat", WINDOW_NORMAL);
@@ -52,7 +51,7 @@ bool Preprocessing::process()
     imshow("bottomhat",gray);
 
     //int thresh = get_otsu_thresh_val(gray,N_COLORS);
-    int thresh = 20;
+    int thresh = get_otsu_thresh_val(gray,N_COLORS) - 25;
     threshold_grayscale(gray, thresh, 0);
 
     result = gray.clone();
@@ -99,7 +98,7 @@ int Preprocessing::get_otsu_thresh_val(Mat src, int n_colors){
     double tmp3 = 0.0;
 
     //Get histogram
-    int* hist = new int[n_colors];
+    int hist[n_colors] = { }; //Don't touch, has to be initialized to zero!!
     get_histogram(src, hist, n_colors);
 
 
@@ -124,7 +123,6 @@ int Preprocessing::get_otsu_thresh_val(Mat src, int n_colors){
         }
     }
 
-	delete []  hist;
     return otsu_thresh_val;
 }
 
@@ -229,13 +227,13 @@ void Preprocessing::threshold_adaptive(Mat src, Mat dst, int tile_size){
     }
 }
 
-void Preprocessing::erode(Mat src, Mat se){
+void Preprocessing::erode_img(Mat src, Mat dst, Mat se){
     int se_center_r = se.rows/2;
     int se_center_c = se.cols/2;
     int offset_r = 0;
     int offset_c = 0;
     unsigned char color_val = COLOR_MAX_VAL;
-
+    
     for(int src_row = 0; src_row < src.rows; src_row++){
         for(int src_col = 0; src_col < src.cols; src_col++){
             for(int se_row = -se_center_r; se_row < se.rows - se_center_r; se_row++){
@@ -243,22 +241,22 @@ void Preprocessing::erode(Mat src, Mat se){
                     //get the current offset
                     offset_r = src_row + se_row;
                     offset_c = src_col + se_col;
-
+                    
                     //ignore pixels out of bounds
-                    if(offset_r < 0 ||
-                            offset_c < 0 ||
-                            offset_c > src.cols ||
+                    if(offset_r < 0 || 
+                            offset_c < 0 || 
+                            offset_c > src.cols || 
                             offset_r > src.rows){
-                        continue;
-                    }else if((src.at<uchar>(offset_r, offset_c) < color_val) &&
+                        continue;     
+                    }else if((src.at<uchar>(offset_r, offset_c) < color_val) && 
                             se.at<uchar>(se_row + se_center_r, se_col + se_center_c)){
-                        color_val = src.at<uchar>(offset_r, offset_c);
+                        color_val = src.at<uchar>(offset_r, offset_c);       
                     }
                 }
             }
-
+            
             //update pixel
-            src.at<uchar>(src_row, src_col) = color_val;
+            dst.at<uchar>(src_row, src_col) = color_val;
             color_val = COLOR_MAX_VAL;
         }
     }
@@ -267,13 +265,13 @@ void Preprocessing::erode(Mat src, Mat se){
     imshow("eroded",src);
 }
 
-void Preprocessing::dialate(Mat src, Mat se){
+void Preprocessing::dilate_img(Mat src, Mat dst, Mat se){
     int se_center_r = se.rows/2;
     int se_center_c = se.cols/2;
     int offset_r = 0;
     int offset_c = 0;
     unsigned char color_val = 0;
-
+    
     for(int src_row = 0; src_row < src.rows; src_row++){
         for(int src_col = 0; src_col < src.cols; src_col++){
             for(int se_row = -se_center_r; se_row < se.rows - se_center_r; se_row++){
@@ -281,43 +279,49 @@ void Preprocessing::dialate(Mat src, Mat se){
                     //get the current offset
                     offset_r = src_row + se_row;
                     offset_c = src_col + se_col;
-
+                    
                     //ignore pixels out of bounds
-                    if(offset_r < 0 ||
-                            offset_c < 0 ||
-                            offset_c > src.cols ||
+                    if(offset_r < 0 || 
+                            offset_c < 0 || 
+                            offset_c > src.cols || 
                             offset_r > src.rows){
-                        continue;
-                    }else if((src.at<uchar>(offset_r, offset_c) > color_val) &&
+                        continue;     
+                    }else if((src.at<uchar>(offset_r, offset_c) > color_val) && 
                             se.at<uchar>(se_row + se_center_r, se_col + se_center_c)){
-                        color_val = src.at<uchar>(offset_r, offset_c);
+                        color_val = src.at<uchar>(offset_r, offset_c);       
                     }
                 }
             }
-
+            
             //update pixel
-            src.at<uchar>(src_row, src_col) = color_val;
+            dst.at<uchar>(src_row, src_col) = color_val;
             color_val = 0;
         }
     }
-    namedWindow("dialated", WINDOW_NORMAL);
-	resizeWindow("dialated", 600, 600);
-    imshow("dialated",src);
+    namedWindow("dilated", WINDOW_NORMAL);
+	resizeWindow("dilated", 600, 600);
+    imshow("dilated",dst);
 }
 
 void Preprocessing::close(Mat img, Mat se){
-    dialate(img, se);
-    erode(img, se);
 
+    Mat dilated(img.rows,img.cols, CV_8U);
+    dilate_img(img, dilated, se);
+    
+    erode_img(dilated, img, se);
+    
     namedWindow("closed", WINDOW_NORMAL);
 	resizeWindow("closed", 600, 600);
     imshow("closed",img);
 }
 
 void Preprocessing::open(Mat img, Mat se){
-    erode(img, se);
-    dialate(img, se);
-
+    
+    Mat eroded(img.rows,img.cols, CV_8U);
+    erode_img(img, eroded, se);
+    
+    dilate_img(eroded, img, se);
+    
     namedWindow("opened", WINDOW_NORMAL);
 	resizeWindow("opened", 600, 600);
     imshow("opened",img);
