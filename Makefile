@@ -5,7 +5,7 @@ CPPFLAGS= `pkg-config --cflags opencv`
 LDFLAGS=
 LDLIBS= `pkg-config --libs opencv`
 
-SRCS=main.cpp perspective_correction.cpp solver.cpp
+SRCS=main.cpp preprocessing.cpp perspective_correction.cpp solver.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 all: aMaze
