@@ -17,11 +17,18 @@ private:
     Finds an aproximation of the center point of the maze
     **/
     cv::Point2f findCenter(cv::Mat &bw);
+
     /**
     Finds the corners of the maze, by finding the points furthest away from the center point.
     They are placed in the corners vector in the order topLeft, topRight, bottomRight, bottomLeft
     **/
     bool findCornes(cv::Mat &bw, cv::Point2f &centerPoint, std::vector<cv::Point2f> &corners);
+
+    /**
+    Finds the corners by first detecting all lines in the image, then iterating all end points.
+    This method uses the hough lines implementation by openCV, and is slightly more robust against noise.
+    **/
+    bool findCornersHoughLines(cv::Mat &bw, std::vector<cv::Point2f> &corners, cv::Mat &annotated);
 
     /**
     Performs a perspective transform on the source image and maps it over to the destination image
