@@ -3,6 +3,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 
+#include "preprocessing.h"
 #include "perspective_correction.h"
 #include "solver.h"
 
