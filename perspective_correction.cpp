@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <algorithm>
 
+#define LOG "[PerspectiveCorrection] "
 #define DEBUG
 
 //#define USE_OPENCV
@@ -23,138 +24,63 @@ PerspectiveCorrection::~PerspectiveCorrection()
 
 bool PerspectiveCorrection::process()
 {
-	cv::Mat annotated = src.clone();
+	// Check if the image is a single channel image (grayscale)
+	if(src.type() != CV_8UC1)
+	{
+		std::cerr << LOG "Source image is not single channel grayscale 8bit unsigned type" << std::endl;
+		return false;
+	}
 
 #ifdef DEBUG
-	cv::namedWindow("Original", cv::WINDOW_NORMAL);
+	// Create an annotated image of the source image.
+	// We will use this to mark important features of the image
+	cv::Mat annotated;
+	cv::cvtColor(src, annotated, CV_GRAY2BGR);
+
+	// Create windows with a fixed 400x400 size
 	cv::namedWindow("blackwhite", cv::WINDOW_NORMAL);
 	cv::namedWindow("annotated", cv::WINDOW_NORMAL);
 	cv::namedWindow("transformed", cv::WINDOW_NORMAL);
 
-	cv::resizeWindow("Original", 400, 400);
 	cv::resizeWindow("blackwhite", 400, 400);
 	cv::resizeWindow("annotated", 400, 400);
 	cv::resizeWindow("transformed", 400, 400);
 
-
-	cv::imshow("Original", src);
 #endif
-
-	cv::Mat bw;
-	cv::cvtColor(src, bw, CV_BGR2GRAY);
-	cv::threshold(bw, bw, 0, 255, CV_THRESH_BINARY_INV | CV_THRESH_OTSU);
 
 #ifdef DEBUG
-	cv::imshow("blackwhite", bw);
+	cv::imshow("blackwhite", src);
 #endif
+
+	// Create a vector to contain the corner point.
+	std::vector<cv::Point2f> corners;
 
 #ifdef USE_OPENCV
-	std::vector<cv::Vec4i> lines;
-	cv::HoughLinesP(bw, lines, 1, CV_PI/180, 70, 30, 10);
-
-	// Draw lines
-	for (int i = 0; i < lines.size(); i++)
-	{
-		cv::Vec4i v = lines[i];
-		cv::line(annotated, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(255,0,0), 4);
-	}
-
-
+	findCornersHoughLines(src, corners, annotated);
+#else
+	// Find the center point of all white pixels
+	cv::Point2f center = findCenter(src);
 
 #ifdef DEBUG
+	cv::circle(annotated, center, 40, CV_RGB(0,255,255), 5);
 	cv::imshow("annotated", annotated);
 #endif
 
-	cv::Point2f topLeft;
-	float topLeftMin = 9999999999999999.0f;
-	cv::Point2f topRight;
-	float topRightMin = 9999999999999999.0f;
-	cv::Point2f bottomLeft;
-	float bottomLeftMin = 9999999999999999.0f;
-	cv::Point2f bottomRight;
-	float bottomRightMin = 9999999999999999.0f;
-
-	// For each point we see if it's the closest one to the edges of the picture
-	for(int lIdx  = 0; lIdx < lines.size(); lIdx++)
-	{
-		cv::Vec4i v = lines[lIdx];
-		for(int pIdx = 0; pIdx < 2; pIdx++)
-		{
-
-			cv::Point2f p((float)v[pIdx*2], (float)v[pIdx*2+1]);
-			cv::Point2f diff;
-
-			// Check if its the top left corner
-			diff.x = p.x - 0.0f;
-			diff.y = p.y - 0.0f;
-			float length = diff.x*diff.x + diff.y*diff.y;
-			if(length < topLeftMin)
-			{
-				topLeftMin = length;
-				topLeft.x = p.x;
-				topLeft.y = p.y;
-			}
-
-			// Check if top right corner
-			diff.x = p.x - bw.cols;
-			diff.y = p.y - 0.0f;
-			length = diff.x*diff.x + diff.y*diff.y;
-			if(length < topRightMin)
-			{
-				topRightMin = length;
-				topRight.x = p.x;
-				topRight.y = p.y;
-			}
-
-			// Check if bottom left corner
-			diff.x = p.x - 0.0f;
-			diff.y = p.y - bw.cols;
-			length = diff.x*diff.x + diff.y*diff.y;
-			if(length < bottomLeftMin)
-			{
-				bottomLeftMin = length;
-				bottomLeft.x = p.x;
-				bottomLeft.y = p.y;
-			}
-
-			// Check if bottom right corner
-			diff.x = p.x - bw.cols;
-			diff.y = p.y - bw.rows;
-			length = diff.x*diff.x + diff.y*diff.y;
-			if(length < bottomRightMin)
-			{
-				bottomRightMin = length;
-				bottomRight.x = p.x;
-				bottomRight.y = p.y;
-			}
-		}
-	}
-
-	std::vector<cv::Point2f> corners;
-	corners.push_back(topLeft);
-	corners.push_back(topRight);
-	corners.push_back(bottomRight);
-	corners.push_back(bottomLeft);
-
-
-#else
-	cv::Point2f center = findCenter(bw);
-	cv::circle(annotated, center, 40, CV_RGB(0,255,255), 5);
-
-	std::vector<cv::Point2f> corners;
-	if(!findCornes(bw, center, corners)) {
+	// Find the corners and place them in a list orderer topLeft, topRight, bottomRight, bottomLeft
+	if(!findCornes(src, center, corners)) {
 		// Could not find corners
 		return false;
 	}
 
 #endif
 
-cv::circle(annotated, corners[0], 20, CV_RGB(0,0,255), 5);
-cv::circle(annotated, corners[1], 20, CV_RGB(0,0,255), 5);
-cv::circle(annotated, corners[2], 20, CV_RGB(0,0,255), 5);
-cv::circle(annotated, corners[3], 20, CV_RGB(0,0,255), 5);
-
 #ifdef DEBUG
+	// Annotate the corner points
+	cv::circle(annotated, corners[0], 20, CV_RGB(0,0,255), 5);
+	cv::circle(annotated, corners[1], 20, CV_RGB(0,0,255), 5);
+	cv::circle(annotated, corners[2], 20, CV_RGB(0,0,255), 5);
+	cv::circle(annotated, corners[3], 20, CV_RGB(0,0,255), 5);
+
 	std::cout << "Top left: " << corners[0] << std::endl;
 	std::cout << "Top right: " <<  corners[1] << std::endl;
 	std::cout << "Bottom right: " <<  corners[2] << std::endl;
@@ -163,25 +89,49 @@ cv::circle(annotated, corners[3], 20, CV_RGB(0,0,255), 5);
 	cv::imshow("annotated", annotated);
 #endif
 
-	cv::Mat quad = cv::Mat::zeros(400, 400, bw.type());
+	// Create a new matrix which we will map the solution onto
+	cv::Mat quad = cv::Mat::zeros(400, 400, CV_8UC1);
 
+	// Make a list with the corners of this quad in the same order (topLeft, topRight, bottomRight, bottomLeft)
 	std::vector<cv::Point2f> quad_pts;
 	quad_pts.push_back(cv::Point2f(0, 0));
 	quad_pts.push_back(cv::Point2f(quad.cols, 0));
 	quad_pts.push_back(cv::Point2f(quad.cols, quad.rows));
 	quad_pts.push_back(cv::Point2f(0, quad.rows));
 
-
-
-
+	/* Calculates coefficients of perspective transformation
+	 * which maps (xi,yi) to (ui,vi), (i=1,2,3,4):
+	 *
+	 *      c00*xi + c01*yi + c02
+	 * ui = ---------------------
+	 *      c20*xi + c21*yi + c22
+	 *
+	 *      c10*xi + c11*yi + c12
+	 * vi = ---------------------
+	 *      c20*xi + c21*yi + c22
+	 *
+	 * Coefficients are calculated by solving linear system:
+	 * / x0 y0  1  0  0  0 -x0*u0 -y0*u0 \ /c00\ /u0\
+	 * | x1 y1  1  0  0  0 -x1*u1 -y1*u1 | |c01| |u1|
+	 * | x2 y2  1  0  0  0 -x2*u2 -y2*u2 | |c02| |u2|
+	 * | x3 y3  1  0  0  0 -x3*u3 -y3*u3 |.|c10|=|u3|,
+	 * |  0  0  0 x0 y0  1 -x0*v0 -y0*v0 | |c11| |v0|
+	 * |  0  0  0 x1 y1  1 -x1*v1 -y1*v1 | |c12| |v1|
+	 * |  0  0  0 x2 y2  1 -x2*v2 -y2*v2 | |c20| |v2|
+	 * \  0  0  0 x3 y3  1 -x3*v3 -y3*v3 / \c21/ \v3/
+	 *
+	 * where:
+	 *   cij - matrix coefficients, c22 = 1
+	 */
 	cv::Mat transmtx = cv::getPerspectiveTransform(corners, quad_pts);
 
 #ifdef USE_OPENCV
-	cv::warpPerspective(bw, quad, transmtx, quad.size(), cv::INTER_NEAREST);
+	cv::warpPerspective(src, quad, transmtx, quad.size(), cv::INTER_NEAREST);
 #else
-	doTransform(transmtx, bw, quad);
+	doTransform(transmtx, src, quad);
 #endif
 
+	// Invert the image such that the result is white with black lines on it.
 	bitwise_not ( quad, quad );
 
 #ifdef DEBUG
@@ -290,6 +240,103 @@ bool PerspectiveCorrection::findCornes(cv::Mat &bw, cv::Point2f &centerPoint, st
 	}
 
 	// Add the corners to the list
+	corners.clear();
+	corners.push_back(topLeft);
+	corners.push_back(topRight);
+	corners.push_back(bottomRight);
+	corners.push_back(bottomLeft);
+	return true;
+}
+
+bool PerspectiveCorrection::findCornersHoughLines(cv::Mat &bw, std::vector<cv::Point2f> &corners, cv::Mat &annotated)
+{
+	std::vector<cv::Vec4i> lines;
+	cv::HoughLinesP(bw, lines, 1, CV_PI/180, 70, 30, 10);
+
+	// Draw lines on the annotated image
+	if(lines.size() < 4) {
+		// We need at least 4 lines to get the corners of a square
+		return false;
+	}
+
+
+#ifdef DEBUG
+
+	for (int i = 0; i < lines.size(); i++)
+	{
+		cv::Vec4i v = lines[i];
+		cv::line(annotated, cv::Point(v[0], v[1]), cv::Point(v[2], v[3]), CV_RGB(255,0,0), 4);
+	}
+
+	cv::imshow("annotated", annotated);
+#endif
+
+	// Find all the corners by finding the line endpoints closest to the edges of the image
+	cv::Point2f topLeft;
+	float topLeftMin = 9999999999999999.0f;
+	cv::Point2f topRight;
+	float topRightMin = 9999999999999999.0f;
+	cv::Point2f bottomLeft;
+	float bottomLeftMin = 9999999999999999.0f;
+	cv::Point2f bottomRight;
+	float bottomRightMin = 9999999999999999.0f;
+
+	// For each point we see if it's the closest one to the edges of the picture
+	for(int lIdx  = 0; lIdx < lines.size(); lIdx++)
+	{
+		cv::Vec4i v = lines[lIdx];
+		for(int pIdx = 0; pIdx < 2; pIdx++)
+		{
+
+			cv::Point2f p((float)v[pIdx*2], (float)v[pIdx*2+1]);
+			cv::Point2f diff;
+
+			// Check if its the top left corner
+			diff.x = p.x - 0.0f;
+			diff.y = p.y - 0.0f;
+			float length = diff.x*diff.x + diff.y*diff.y;
+			if(length < topLeftMin)
+			{
+				topLeftMin = length;
+				topLeft.x = p.x;
+				topLeft.y = p.y;
+			}
+
+			// Check if top right corner
+			diff.x = p.x - bw.cols;
+			diff.y = p.y - 0.0f;
+			length = diff.x*diff.x + diff.y*diff.y;
+			if(length < topRightMin)
+			{
+				topRightMin = length;
+				topRight.x = p.x;
+				topRight.y = p.y;
+			}
+
+			// Check if bottom left corner
+			diff.x = p.x - 0.0f;
+			diff.y = p.y - bw.cols;
+			length = diff.x*diff.x + diff.y*diff.y;
+			if(length < bottomLeftMin)
+			{
+				bottomLeftMin = length;
+				bottomLeft.x = p.x;
+				bottomLeft.y = p.y;
+			}
+
+			// Check if bottom right corner
+			diff.x = p.x - bw.cols;
+			diff.y = p.y - bw.rows;
+			length = diff.x*diff.x + diff.y*diff.y;
+			if(length < bottomRightMin)
+			{
+				bottomRightMin = length;
+				bottomRight.x = p.x;
+				bottomRight.y = p.y;
+			}
+		}
+	}
+
 	corners.clear();
 	corners.push_back(topLeft);
 	corners.push_back(topRight);
