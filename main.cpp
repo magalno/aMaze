@@ -33,6 +33,17 @@ int main(){
 		return 2;
 	}
 
+	cv::Mat transformed = pc.getResult();
+	Solver solver(transformed);
+
+	/*
+	if(!solver.process()) {
+
+	}
+	*/
+	cv::Mat solution = solver.getSolution();
+	cv::imshow("SOLUTION", solution);
+
 
 	cv::waitKey();
 	return 0;
