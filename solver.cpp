@@ -258,7 +258,7 @@ bool Solver::recursive_solve(int x,int y){
 	return false;
 }
 void Solver::create_maze_solution_image(){
-	this->image = this->orginal_image;
+	//this->image = this->orginal_image;
 	cvtColor(this->image, this->image, CV_GRAY2RGB);
 	for (int x=0; x<this->maze_size_x; x++){
 	    for(int y=0; y<this->maze_size_y; y++){
@@ -266,11 +266,11 @@ void Solver::create_maze_solution_image(){
 			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
 				rectangle( this->image,Point( y*this->grid_size_y/2-this->grid_size_y/4, x*this->grid_size_x/2-this->grid_size_x/4 ),Point( y*this->grid_size_y/2+this->grid_size_y/4, x*this->grid_size_x/2+this->grid_size_x/4),Scalar( 255, 0, 0 ),-1,8 );
 			}
-			if (this->maze_solution_array[x][y] == 0){
+			else if (this->maze_solution_array[x][y] == 0){
 			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
 				rectangle( this->image,Point( y*this->grid_size_y/2-this->grid_size_y/4, x*this->grid_size_x/2-this->grid_size_x/4 ),Point( y*this->grid_size_y/2+this->grid_size_y/4, x*this->grid_size_x/2+this->grid_size_x/4),Scalar( 0, 0, 0 ),-1,8 );
 			}
-			if (this->maze_solution_array[x][y] == 1){
+			else{
 			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
 				rectangle( this->image,Point( y*this->grid_size_y/2-this->grid_size_y/4, x*this->grid_size_x/2-this->grid_size_x/4 ),Point( y*this->grid_size_y/2+this->grid_size_y/4, x*this->grid_size_x/2+this->grid_size_x/4),Scalar( 255, 255, 255 ),-1,8 );
 			}
