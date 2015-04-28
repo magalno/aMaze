@@ -65,7 +65,13 @@ bool Preprocessing::process()
     return true;    
 }
 
-void Preprocessing::get_histogram(Mat src, int hist[], int n_colors){
+Mat Preprocessing::getResult()
+{
+    return result;
+}
+
+void Preprocessing::get_histogram(Mat src, int hist[], int n_colors)
+{
     int index;
     for(int x = 0; x < src.rows - 0; x++) {
         for(int y = 0; y < src.cols - 0; y++) {

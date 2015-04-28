@@ -25,8 +25,7 @@ int main(){
 		std::cout << "Could not perform preprocessing" << std::endl;
 		return 2;
 	}
-	
-	PerspectiveCorrection pc(pp.getResult());
+	cv::Mat bw = pp.getResult();
 	PerspectiveCorrection pc(bw);
 	if(!pc.process())
 	{
