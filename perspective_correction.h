@@ -2,6 +2,7 @@
 #define PERSPECTIVE_CORRECTION_H
 
 #include <opencv2/imgproc/imgproc.hpp>
+#include <functional>
 
 class PerspectiveCorrection
 {
@@ -34,6 +35,14 @@ private:
     Performs a perspective transform on the source image and maps it over to the destination image
     **/
     bool doTransform(cv::Mat &transmtx,cv::Mat &src, cv::Mat &dst);
+
+    /**
+    A function for spiraling out from a point. (Square not circling)
+    delta s the maximum distance to go out in x and y directions
+
+    Func should return true if the count should increase
+    **/
+    int countSpiralOut(int centerX, int centerY, int delta, std::function<bool (const int x, const int y)> func);
 
     cv::Mat src;
     cv::Mat result;
