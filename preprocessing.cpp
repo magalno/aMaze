@@ -15,10 +15,10 @@ using namespace std;
 #define WEIGHT_GREEN    1
 #define WEIGHT_BLUE     1
 
-#define KERNEL_SIZE 21
+#define KERNEL_SIZE 11
 
 #define COLOR_RES       8
-#define N_COLORS        pow(2, COLOR_RES)
+#define N_COLORS        ((int)pow(2, COLOR_RES))
 #define COLOR_MAX_VAL   (N_COLORS - 1)
 
 Preprocessing::Preprocessing(cv::Mat &_src)
@@ -40,15 +40,17 @@ bool Preprocessing::process()
     convert_to_grayscale(src, gray);
 
     //OpenCV
-    Mat structuring_element = Mat::ones(KERNEL_SIZE,KERNEL_SIZE, CV_8U);
+    //Mat structuring_element = getStructuringElement(MORPH_RECT, Size(KERNEL_SIZE*2+1, KERNEL_SIZE*2+1), Point(KERNEL_SIZE,KERNEL_SIZE) );
+    Mat structuring_element = Mat::ones(KERNEL_SIZE*2+1,KERNEL_SIZE*2+1, CV_8U);
 
     //OpenCV
     morphologyEx(gray, gray, 6, structuring_element );
+    //bottom_hat(gray, structuring_element);
+    
+    namedWindow("bottom hat", WINDOW_NORMAL);
+	resizeWindow("bottom hat", 600, 600);
+    imshow("bottom hat",gray);
 
-    //morphed
-    namedWindow("bottomhat", WINDOW_NORMAL);
-	resizeWindow("bottomhat", 600, 600);
-    imshow("bottomhat",gray);
 
     //int thresh = get_otsu_thresh_val(gray,N_COLORS);
     int thresh = get_otsu_thresh_val(gray,N_COLORS) - 25;
@@ -98,7 +100,7 @@ int Preprocessing::get_otsu_thresh_val(Mat src, int n_colors){
     double tmp3 = 0.0;
 
     //Get histogram
-    int hist[n_colors] = { }; //Don't touch, has to be initialized to zero!!
+    int hist[N_COLORS] = { }; //Don't touch, has to be initialized to zero!!
     get_histogram(src, hist, n_colors);
 
 
