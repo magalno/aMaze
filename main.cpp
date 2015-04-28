@@ -18,10 +18,14 @@ int main(){
     }
 
 	// Do a simple threshold before sending it to the perspective correction module
-	cv::Mat bw;
-	cv::cvtColor(src, bw, CV_BGR2GRAY);
-	cv::threshold(bw, bw, 115, 255, CV_THRESH_BINARY_INV);
-
+	Preprocessing pp(src);
+    if(!pp.process())
+	{
+		std::cout << "Could not perform preprocessing" << std::endl;
+		return 2;
+	}
+	
+	PerspectiveCorrection pc(pp.getResult());
 	PerspectiveCorrection pc(bw);
 	if(!pc.process())
 	{
