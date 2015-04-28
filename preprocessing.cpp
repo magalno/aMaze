@@ -34,13 +34,6 @@ Preprocessing::~Preprocessing()
 
 bool Preprocessing::process()
 {
-    //Mat img = imread("mazes/maze3.jpg", CV_LOAD_IMAGE_UNCHANGED);
-    
-    //display original
-    namedWindow("org", WINDOW_NORMAL);
-	resizeWindow("org", 600, 600);
-    imshow("org",src);
-    
     // Convert to grayscale
     Mat gray;
     gray.create(src.rows, src.cols, CV_8U);
@@ -53,7 +46,13 @@ bool Preprocessing::process()
     //OpenCV
     morphologyEx(gray, gray, 6, element );
     
-    int thresh = get_otsu_thresh_val(gray,N_COLORS);
+    //morphed
+    namedWindow("bottomhat", WINDOW_NORMAL);
+	resizeWindow("bottomhat", 600, 600);
+    imshow("bottomhat",gray);
+    
+    //int thresh = get_otsu_thresh_val(gray,N_COLORS);
+    int thresh = 20;
     threshold_grayscale(gray, thresh, 0);
     
     result = gray.clone(); 
@@ -61,8 +60,9 @@ bool Preprocessing::process()
     //display original
     namedWindow("res", WINDOW_NORMAL);
 	resizeWindow("res", 600, 600);
-    imshow("res",result);
+    imshow("res",gray);
     
+    return true;    
 }
 
 void Preprocessing::get_histogram(Mat src, int hist[], int n_colors){
