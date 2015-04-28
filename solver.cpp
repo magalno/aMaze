@@ -8,12 +8,11 @@ using namespace cv;
 
 Solver::Solver(cv::Mat &src){
 	this->image = src.clone();
-	
-	cout <<"solver created"<<endl;
-
 }
 Solver::~Solver(){
-	cout <<"solver destroyd"<<endl;
+	for (int i = 0; i < this->maze_size_x;i++){
+		delete [] this->maze_array[i];
+	}
 }
 
 bool Solver::process(){
@@ -25,10 +24,8 @@ bool Solver::process(){
 	create_maze_solution_image();
 }
 
-
 void Solver::thin_image(){
 	// using Zhang-Suen's thinning algorithem
-	// http://opencv-code.com/puick-tips/implementation-of-thinning-algorithem-in-opencv/
 	Mat marker = Mat::zeros(this->image.size(),CV_8UC1);
 	//invertin image
 	this->image = Scalar::all(255) - this->image;
@@ -55,21 +52,16 @@ void Solver::thin_image(){
 				int B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;	
 				int m1 = iter ? (p2*p4*p6) : (p2*p4*p8);
 				int m2 = iter ? (p4*p6*p8) : (p2*p6*p8);
-			//	cout << A << "  " << B << "  " << m1 << "  " << m2<<endl;
+				
 				if (A==1 &&(B>=2 &&B<=6) && m1== 0 && m2 ==0)
 					marker.at<uchar>(i,j) = 255;
-					
 			}
 		}
 		for (int x =0; x < this->image.rows;x++){
 				for (int y =0; y< this->image.cols;y++){
 					if (marker.at<uchar>(x,y) == 255){
-
 						this->image.at<uchar>(x,y) = 0;
 					}
-
-				//cout <<(int)this->image.at<uchar>(x,y)<<endl;
-
 			}
 		}
 		iter++;
@@ -79,10 +71,10 @@ void Solver::thin_image(){
 	//invertin image
 	 
 	this->image = Scalar::all(255) - this->image;
-	cv::imshow("thinned image", this->image);
-	imwrite( "thinned_Image.jpg", this->image );
+
 
 }
+
 void Solver::find_gird_sizes(){
 	vector<int> minDistList;
 
@@ -133,6 +125,7 @@ void Solver::find_gird_sizes(){
 
 	cout <<"grid size x: "<<this->grid_size_x<<" y: "<< this->grid_size_y<<endl;
 }
+
 void Solver::find_maze_arrays(){
 	
 	this->maze_size_x = (this->image.rows/this->grid_size_x)*2+1;
@@ -155,6 +148,7 @@ void Solver::find_maze_arrays(){
 	}
 	
 }
+
 bool Solver::check_area(int pos_x,int pos_y,int size_x,int size_y){
 	int black_pixle_count =0;
 	for(int x =0; x<size_x;x++){
@@ -170,6 +164,7 @@ bool Solver::check_area(int pos_x,int pos_y,int size_x,int size_y){
 	}
 	return (black_pixle_count<=0);
 }
+
 void Solver::solv_maze(){
 	
 	
@@ -216,9 +211,8 @@ void Solver::solv_maze(){
 	this->recursive_solve(this->maze_start_x,this->maze_start_y);
 
 }
+
 bool Solver::recursive_solve(int x,int y){	
-	//if (x>38)
-	//	cout<<x<<" "<<y<<" "<<this->maze_goal_x<<" "<<this->maze_goal_y<<endl;
 
 	if (this->maze_goal_x == x && this->maze_goal_y == y){
 		cout <<"goal!!"<<endl;
@@ -257,31 +251,23 @@ bool Solver::recursive_solve(int x,int y){
 	}
 	return false;
 }
+
 void Solver::create_maze_solution_image(){
-	//this->image = this->orginal_image;
+
 	cvtColor(this->image, this->image, CV_GRAY2RGB);
 	for (int x=0; x<this->maze_size_x; x++){
 	    for(int y=0; y<this->maze_size_y; y++){
 			if (this->maze_solution_array[x][y] == 2){
-			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
 				rectangle( this->image,Point( y*this->grid_size_y/2-this->grid_size_y/4, x*this->grid_size_x/2-this->grid_size_x/4 ),Point( y*this->grid_size_y/2+this->grid_size_y/4, x*this->grid_size_x/2+this->grid_size_x/4),Scalar( 255, 0, 0 ),-1,8 );
 			}
 			else if (this->maze_solution_array[x][y] == 0){
-			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
 				rectangle( this->image,Point( y*this->grid_size_y/2-this->grid_size_y/4, x*this->grid_size_x/2-this->grid_size_x/4 ),Point( y*this->grid_size_y/2+this->grid_size_y/4, x*this->grid_size_x/2+this->grid_size_x/4),Scalar( 0, 0, 0 ),-1,8 );
 			}
 			else{
-			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
 				rectangle( this->image,Point( y*this->grid_size_y/2-this->grid_size_y/4, x*this->grid_size_x/2-this->grid_size_x/4 ),Point( y*this->grid_size_y/2+this->grid_size_y/4, x*this->grid_size_x/2+this->grid_size_x/4),Scalar( 255, 255, 255 ),-1,8 );
-			}
-			
-			      //   this->image.at<uchar>(x*this->grid_size_x/2,y*this->grid_size_y/2) = 0;
-			//rectangle( this->image,Point( y*this->grid_size_y/2-3, x*this->grid_size_x/2-3 ),Point( y*this->grid_size_y/2+3, x*this->grid_size_x/2+3),Scalar( 0, 0, 255 ),-2,8 );
-			
+			}	
 		 }
 	}
-	imwrite( "solved_Image.jpg", this->image );
-
 }
 void Solver::print_maze(){
 	cout<<endl<<endl;
@@ -293,13 +279,11 @@ void Solver::print_maze(){
 			else if (this->maze_array[x][y] ==1){
 				cout<<"o";
 			}
-			
 		}
 		cout<<endl;
 	}
 }
 void Solver::print_maze_solution(){
-	
 	cout<<endl<<endl;
 	for (int x =0; x<this->maze_size_x;x++){
 		for (int y=0; y< this->maze_size_y;y++){
