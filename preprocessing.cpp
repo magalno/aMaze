@@ -38,63 +38,21 @@ bool Preprocessing::process()
     Mat gray;
     gray.create(src.rows, src.cols, CV_8U);
     convert_to_grayscale(src, gray);
+    
+    /* Use bottom_hat to remove ambience noise */
+    Mat se_black_hat = Mat::ones(KERNEL_SIZE*2+1,KERNEL_SIZE*2+1, CV_8U);
+    //morphologyEx(gray, gray, 6, se_black_hat );
+    bottom_hat(gray, se_black_hat);
 
-    //OpenCV
-    //Mat structuring_element = getStructuringElement(MORPH_RECT, Size(KERNEL_SIZE*2+1, KERNEL_SIZE*2+1), Point(KERNEL_SIZE,KERNEL_SIZE) );
-    Mat structuring_element = Mat::ones(KERNEL_SIZE*2+1,KERNEL_SIZE*2+1, CV_8U);
-
-    //OpenCV
-    morphologyEx(gray, gray, 6, structuring_element );
-    //bottom_hat(gray, structuring_element);
-    /*
-    namedWindow("bottom hat", WINDOW_NORMAL);
-	resizeWindow("bottom hat", 600, 600);
-    imshow("bottom hat",gray);
-    */
-      
-    /*
-    namedWindow("bottom hat inv", WINDOW_NORMAL);
-	resizeWindow("bottom hat inv", 600, 600);
-    imshow("bottom hat inv",gray);
-*/
-
+    /* Binerize the image with global thresholding */
     int thresh = get_otsu_thresh_val(gray,N_COLORS);
-    threshold_grayscale(gray, thresh - 30, 0);
-    
-    //invert(gray);
-    
-    namedWindow("thresh", WINDOW_NORMAL);
-	resizeWindow("thresh", 600, 600);
-    imshow("thresh",gray);
-    
-    //result = gray.clone();
+    threshold_grayscale(gray, 37, 0);
 
-    Mat se_d = Mat::ones(5,5, CV_8U);
-    Mat se_e = Mat::ones(5,5, CV_8U);
+    /* Remove salt and pepper noise by opening the negative image */
+    Mat se = Mat::ones(3,3, CV_8U);
+    open(gray, se);
     
-    Mat dilated(gray.rows,gray.cols, CV_8U);
-    dilate_img(gray, dilated, se_d);
-    
-    namedWindow("dilated", WINDOW_NORMAL);
-	resizeWindow("dilated", 600, 600);
-    imshow("dilated",dilated);
-    
-    
-    Mat eroded(gray.rows,gray.cols, CV_8U);
-    erode_img(dilated, eroded, se_e);
-    
-    namedWindow("eroded", WINDOW_NORMAL);
-	resizeWindow("eroded", 600, 600);
-    imshow("eroded",eroded);
-    
-    result = eroded.clone();
-    
-    //threshold_adaptive(gray, result, 1024);
-
-    //display original
-    namedWindow("res", WINDOW_NORMAL);
-	resizeWindow("res", 600, 600);
-    imshow("res",eroded);
+    result = gray.clone();
 
     return true;
 }
@@ -133,7 +91,7 @@ int Preprocessing::get_otsu_thresh_val(Mat src, int n_colors){
     double tmp3 = 0.0;
 
     //Get histogram
-    int hist[N_COLORS] = { }; //Don't touch, has to be initialized to zero!!
+    int hist[N_COLORS] = { }; 
     get_histogram(src, hist, n_colors);
 
 
@@ -280,8 +238,8 @@ void Preprocessing::erode_img(Mat src, Mat dst, Mat se){
                     //ignore pixels out of bounds
                     if(offset_r < 0 || 
                             offset_c < 0 || 
-                            offset_c > src.cols || 
-                            offset_r > src.rows){
+                            offset_c >= src.cols || 
+                            offset_r >= src.rows){
                         continue;     
                     }else if((src.at<uchar>(offset_r, offset_c) < color_val) && 
                             se.at<uchar>(se_row + se_center_r, se_col + se_center_c)){
@@ -295,9 +253,11 @@ void Preprocessing::erode_img(Mat src, Mat dst, Mat se){
             color_val = COLOR_MAX_VAL;
         }
     }
+    /*
     namedWindow("eroded", WINDOW_NORMAL);
 	resizeWindow("eroded", 600, 600);
     imshow("eroded",src);
+    */
 }
 
 void Preprocessing::dilate_img(Mat src, Mat dst, Mat se){
@@ -333,9 +293,11 @@ void Preprocessing::dilate_img(Mat src, Mat dst, Mat se){
             color_val = 0;
         }
     }
+    /*
     namedWindow("dilated", WINDOW_NORMAL);
 	resizeWindow("dilated", 600, 600);
     imshow("dilated",dst);
+    */
 }
 
 void Preprocessing::close(Mat img, Mat se){
@@ -344,10 +306,11 @@ void Preprocessing::close(Mat img, Mat se){
     dilate_img(img, dilated, se);
     
     erode_img(dilated, img, se);
-    
+    /*
     namedWindow("closed", WINDOW_NORMAL);
 	resizeWindow("closed", 600, 600);
     imshow("closed",img);
+    */
 }
 
 void Preprocessing::open(Mat img, Mat se){
@@ -357,9 +320,11 @@ void Preprocessing::open(Mat img, Mat se){
     
     dilate_img(eroded, img, se);
     
+    /*
     namedWindow("opened", WINDOW_NORMAL);
 	resizeWindow("opened", 600, 600);
     imshow("opened",img);
+    */
 }
 
 void Preprocessing::bottom_hat(Mat img, Mat se){
@@ -371,9 +336,11 @@ void Preprocessing::bottom_hat(Mat img, Mat se){
             img.at<uchar>(row, col) -= clone.at<uchar>(row, col);
         }
     }
+    /*
     namedWindow("bottom hat", WINDOW_NORMAL);
 	resizeWindow("bottom hat", 600, 600);
     imshow("bottom hat",img);
+    */
 }
 
 void Preprocessing::top_hat(Mat img, Mat se){
@@ -385,9 +352,11 @@ void Preprocessing::top_hat(Mat img, Mat se){
             img.at<uchar>(row, col) -= clone.at<uchar>(row, col);
         }
     }
+    /*
     namedWindow("top hat", WINDOW_NORMAL);
 	resizeWindow("top hat", 600, 600);
     imshow("top hat",img);
+    */
 }
 
 void Preprocessing::invert(Mat img){
