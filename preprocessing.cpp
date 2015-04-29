@@ -41,8 +41,8 @@ bool Preprocessing::process()
     
     /* Use bottom_hat to remove ambience noise */
     Mat se_black_hat = Mat::ones(KERNEL_SIZE*2+1,KERNEL_SIZE*2+1, CV_8U);
-    //morphologyEx(gray, gray, 6, se_black_hat );
-    bottom_hat(gray, se_black_hat);
+    morphologyEx(gray, gray, 6, se_black_hat );
+    //bottom_hat(gray, se_black_hat);
 
     /* Binerize the image with global thresholding */
     int thresh = get_otsu_thresh_val(gray,N_COLORS);
