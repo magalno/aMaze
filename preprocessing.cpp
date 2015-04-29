@@ -46,22 +46,55 @@ bool Preprocessing::process()
     //OpenCV
     morphologyEx(gray, gray, 6, structuring_element );
     //bottom_hat(gray, structuring_element);
-    
+    /*
     namedWindow("bottom hat", WINDOW_NORMAL);
 	resizeWindow("bottom hat", 600, 600);
     imshow("bottom hat",gray);
+    */
+      
+    /*
+    namedWindow("bottom hat inv", WINDOW_NORMAL);
+	resizeWindow("bottom hat inv", 600, 600);
+    imshow("bottom hat inv",gray);
+*/
 
+    int thresh = get_otsu_thresh_val(gray,N_COLORS);
+    threshold_grayscale(gray, thresh - 30, 0);
+    
+    //invert(gray);
+    
+    namedWindow("thresh", WINDOW_NORMAL);
+	resizeWindow("thresh", 600, 600);
+    imshow("thresh",gray);
+    
+    //result = gray.clone();
 
-    //int thresh = get_otsu_thresh_val(gray,N_COLORS);
-    int thresh = get_otsu_thresh_val(gray,N_COLORS) - 25;
-    threshold_grayscale(gray, thresh, 0);
-
-    result = gray.clone();
+    Mat se_d = Mat::ones(5,5, CV_8U);
+    Mat se_e = Mat::ones(5,5, CV_8U);
+    
+    Mat dilated(gray.rows,gray.cols, CV_8U);
+    dilate_img(gray, dilated, se_d);
+    
+    namedWindow("dilated", WINDOW_NORMAL);
+	resizeWindow("dilated", 600, 600);
+    imshow("dilated",dilated);
+    
+    
+    Mat eroded(gray.rows,gray.cols, CV_8U);
+    erode_img(dilated, eroded, se_e);
+    
+    namedWindow("eroded", WINDOW_NORMAL);
+	resizeWindow("eroded", 600, 600);
+    imshow("eroded",eroded);
+    
+    result = eroded.clone();
+    
+    //threshold_adaptive(gray, result, 1024);
 
     //display original
     namedWindow("res", WINDOW_NORMAL);
 	resizeWindow("res", 600, 600);
-    imshow("res",gray);
+    imshow("res",eroded);
 
     return true;
 }
