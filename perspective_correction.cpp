@@ -9,7 +9,7 @@
 #define LOG "[PerspectiveCorrection] "
 #define DEBUG
 
-//#define USE_OPENCV
+#define USE_OPENCV
 
 PerspectiveCorrection::PerspectiveCorrection(cv::Mat &_src)
 	: src(_src), result(400, 400, CV_8UC1)
@@ -66,7 +66,7 @@ bool PerspectiveCorrection::process()
 	cv::Point2f center = findCenter(src);
 
 #ifdef DEBUG
-	cv::circle(annotated, center, 40, CV_RGB(0,255,255), 5);
+	cv::circle(annotated, center, 40, CV_RGB(0,255,255), 20);
 	cv::imshow("annotated", annotated);
 #endif
 
@@ -81,10 +81,10 @@ bool PerspectiveCorrection::process()
 
 #ifdef DEBUG
 	// Annotate the corner points
-	cv::circle(annotated, corners[0], 20, CV_RGB(0,0,255), 5);
-	cv::circle(annotated, corners[1], 20, CV_RGB(0,0,255), 5);
-	cv::circle(annotated, corners[2], 20, CV_RGB(0,0,255), 5);
-	cv::circle(annotated, corners[3], 20, CV_RGB(0,0,255), 5);
+	cv::circle(annotated, corners[0], 40, CV_RGB(0,0,255), 20);
+	cv::circle(annotated, corners[1], 40, CV_RGB(0,0,255), 20);
+	cv::circle(annotated, corners[2], 40, CV_RGB(0,0,255), 20);
+	cv::circle(annotated, corners[3], 40, CV_RGB(0,0,255), 20);
 
 	std::cout << "Top left: " << corners[0] << std::endl;
 	std::cout << "Top right: " <<  corners[1] << std::endl;
@@ -179,7 +179,7 @@ cv::Point2f PerspectiveCorrection::findCenter(cv::Mat &bw)
 	return center;
 }
 
-int PerspectiveCorrection::countSpiralOut(int centerX, int centerY, int delta, std::function<bool (const int x, const int y)> func)
+void PerspectiveCorrection::spiralOut(int centerX, int centerY, int delta, std::function<bool (const int x, const int y)> func)
 {
 	int x,y,dx,dy;
     x = y = dx =0;
@@ -187,12 +187,11 @@ int PerspectiveCorrection::countSpiralOut(int centerX, int centerY, int delta, s
     int t = delta;
     int maxI = t*t;
 
-	int count = 0;
     for(int i =0; i < maxI; i++){
         if ((-delta <= x) && (x <= delta) && (-delta <= y) && (y <= delta)){
-    		if(func(centerX+x, centerY+y))
+    		if(!func(centerX+x, centerY+y))
 			{
-				count++;
+				return;
 			}
         }
         if( (x == y) || ((x < 0) && (x == -y)) || ((x > 0) && (x == 1-y))){
@@ -203,7 +202,7 @@ int PerspectiveCorrection::countSpiralOut(int centerX, int centerY, int delta, s
         x += dx;
         y += dy;
     }
-	return count;
+	return;
 }
 
 
@@ -231,12 +230,20 @@ bool PerspectiveCorrection::findCornes(cv::Mat &bw, cv::Point2f &centerPoint, st
 			}
 			// We have a white pixel, scan the neighbooring 6x6 area
 			// We search out in a spiral
-			int pixelMatches = countSpiralOut(x, y, 3, [&] (const int pX, const int pY)
+			int pixelMatches = 0;
+			spiralOut(x, y, 3, [&] (const int pX, const int pY)
 			{
 				if(pX < 0 && pY < 0 && pX >= bw.cols && pY >= bw.rows) {
-					return false;
+					return true;
 				}
-				return bw.at<uint8_t>(pY, pX) == 255;
+				if(bw.at<uint8_t>(pY, pX) == 255) {
+					pixelMatches++;
+					if(pixelMatches >= 4) {
+						return false;
+					}
+				}
+
+				return true;
 			});
 
 			if(pixelMatches < 4)
