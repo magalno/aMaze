@@ -18,6 +18,10 @@ int main(){
         return 1;
     }
 
+	cv::namedWindow("Original", cv::WINDOW_NORMAL);
+	cv::resizeWindow("Original", 400, 400);
+	cv::imshow("Original", src);
+
 	// Do a simple threshold before sending it to the perspective correction module
 	Preprocessing pp(src);
     if(!pp.process())
@@ -36,11 +40,11 @@ int main(){
 	cv::Mat transformed = pc.getResult();
 	Solver solver(transformed);
 
-	
+
 	if(!solver.process()) {
 
 	}
-	
+
 	cv::Mat solution = solver.getResult();
 	cv::imshow("SOLUTION", solution);
 

@@ -9,7 +9,7 @@
 #define LOG "[PerspectiveCorrection] "
 #define DEBUG
 
-#define USE_OPENCV
+//#define USE_OPENCV
 
 PerspectiveCorrection::PerspectiveCorrection(cv::Mat &_src)
 	: src(_src), result(400, 400, CV_8UC1)
